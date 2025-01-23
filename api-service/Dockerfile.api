@@ -1,0 +1,29 @@
+# 使用 Go 官方的镜像作为构建环境
+FROM golang:1.23 AS builder
+
+# 设置工作目录
+WORKDIR /app
+
+# 将当前目录下的 Go 源代码复制到容器中
+COPY . .
+
+# 下载 Go 依赖
+RUN go mod tidy
+
+# 构建 Go 可执行文件
+RUN CGO_ENABLED=0 GOOS=linux go build -o api-server .
+
+# 使用更小的镜像运行构建好的应用
+FROM alpine:latest
+
+# 安装所需的库
+RUN apk --no-cache add ca-certificates
+
+# 将构建好的 Go 可执行文件复制到新的镜像中
+COPY --from=builder /app/api-server /api-server
+
+# 设置容器启动命令
+ENTRYPOINT ["/api-server"]
+
+# 容器监听的端口
+EXPOSE 8080

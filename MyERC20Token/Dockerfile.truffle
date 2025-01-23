@@ -1,0 +1,18 @@
+# 使用官方的 Node.js 镜像作为基础镜像
+FROM node:16
+
+# 设置工作目录
+WORKDIR /app
+
+# 将项目文件复制到容器内
+COPY . .
+
+# 安装Truffle和其他依赖
+RUN npm install -g truffle
+RUN npm install
+
+# 设置容器启动时的命令
+#CMD ["truffle", "migrate", "--network", "development"]
+
+# 设置默认命令为 truffle 控制台
+CMD ["truffle", "console"]

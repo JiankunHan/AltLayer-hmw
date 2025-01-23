@@ -1,0 +1,37 @@
+# build all images
+docker-compose up --build
+
+#build specific image
+docker-compose up -d --no-deps --build my_service
+
+#source /data/SQL/create_table.sql in mysql image
+
+#create a deposit/withdraw claim
+curl -X POST "http://localhost:8080/tokenClaim?amount=1000000000000000000&user=Jiankun&contract_address=0x5f8e26fAcC23FA4cbd87b8d9Dbbd33D5047abDE1&private_key=0x4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d&operation=deposit"
+curl -X POST "http://localhost:8080/tokenClaim?amount=500000000000000000&user=Jiankun&contract_address=0x5f8e26fAcC23FA4cbd87b8d9Dbbd33D5047abDE1&private_key=0x4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d&operation=withdraw"
+
+#retrieve a claim
+curl -X GET "http://localhost:8080/tokenClaim/claims"
+curl -X GET "http://localhost:8080/tokenClaim/claims?user=Jiankun"
+curl -X GET "http://localhost:8080/tokenClaim/claims?type=withdraw"
+curl -X GET "http://localhost:8080/tokenClaim/claims?id=2"
+curl -X GET "http://localhost:8080/tokenClaim/claims?status=0"
+curl -X GET "http://localhost:8080/tokenClaim/claims?user=Jiankun&status=0"
+curl -X GET "http://localhost:8080/tokenClaim/claims?user=Jiankun&type=withdraw"
+curl -X GET "http://localhost:8080/tokenClaim/claims?id=2&status=0"
+curl -X GET "http://localhost:8080/tokenClaim/claims?id=2&user=Jiankun"
+curl -X GET "http://localhost:8080/tokenClaim/claims?id=2&user=Jiankun&status=0"
+
+#create an approval
+curl -X POST "http://localhost:8080/approval?claim_id=1&user=manager1&operation=approve"
+curl -X POST "http://localhost:8080/approval?claim_id=1&user=manager1&operation=unapprove"
+
+#retrieve an approval
+curl -X GET "http://localhost:8080/approval"
+curl -X GET "http://localhost:8080/approval?approver=manager1"
+curl -X GET "http://localhost:8080/approval?id=1"
+curl -X GET "http://localhost:8080/approval?claim_id=1"
+curl -X GET "http://localhost:8080/approval?status=1"
+curl -X GET "http://localhost:8080/approval?approver=manager1&claim_id=1"
+curl -X GET "http://localhost:8080/approval?status=1&claim_id=1"
+curl -X GET "http://localhost:8080/approval?approver=manager1&status=1&claim_id=1"

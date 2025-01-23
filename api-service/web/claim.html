@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>本地API调用</title>
+</head>
+<body>
+    <h1>数据输入与展示结果</h1>
+    <label for="inputData">输入数据：</label>
+    <input type="text" id="inputData" name="inputData">
+    <button id="submitButton">提交</button>
+
+    <h2>返回结果:</h2>
+    <p id="result"></p>
+
+    <script>
+        document.getElementById('submitButton').addEventListener('click', function() {
+            const inputData = document.getElementById('inputData').value;
+            fetch('http://localhost:3000/api/data', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ input: inputData })
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('result').innerText = '结果: ' + data.output;
+            })
+            .catch(error => {
+                console.error('API调用失败:', error);
+            });
+        });
+    </script>
+</body>
+</html>

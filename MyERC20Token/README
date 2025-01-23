@@ -1,0 +1,4 @@
+docker build -t truffle-myerc20token .
+docker run --name truffle-container -it -p 8545:8545 truffle-myerc20token
+
+docker-compose up --build

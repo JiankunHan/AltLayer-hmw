@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  api-server:
+    build:
+      context: ./api-service
+      dockerfile: Dockerfile.api
+      cache_from:
+        - type=none
+    ports:
+      - "8080:8080"
+    container_name: api-server
+    environment:
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=Jiankun9598+
+      - MYSQL_DBNAME=homework_db
+      - GANACHE_URL=http://ganache:8545
+      - NETWORK_ID=5777
+    depends_on:
+      - mysql
+      - ganache
+
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: Jiankun9598+
+      MYSQL_DATABASE: homework_db
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./api-service/SQL:/data/SQL
+      
+  ganache:
+    image: trufflesuite/ganache-cli:latest
+    container_name: ganache
+    ports:
+      - "8545:8545"
+    environment:
+      - "NETWORK_ID=5777"
+    command: >
+      ganache-cli
+      -a 2
+      -e 1000000
+      --deterministic
+      --db /data/ganache_db
+    volumes:
+      - ganache_data:/data
+      - ./MyERC20Token/db:/data/ganache_db
+
+  truffle:
+    build:
+      context: ./MyERC20Token
+      dockerfile: Dockerfile.truffle
+    container_name: truffle
+    working_dir: /app
+    volumes:
+      - ./MyERC20Token/contracts:/app/contracts
+      - ./MyERC20Token/migrations:/app/migrations
+      - ./MyERC20Token/truffle-config.js:/app/truffle-config.js
+    depends_on:
+      - ganache
+    command: ["truffle", "develop"]
+
+volumes:
+  mysql-data:
+  ganache_data:
+    driver: local
