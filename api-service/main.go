@@ -1,40 +1,63 @@
 package main
 
 import (
+	"fmt"
+	domain "hw-app/internal/domain"
 	mysql_connector "hw-app/internal/repository"
-	claim "hw-app/internal/tools"
+	service "hw-app/internal/service"
+	utils "hw-app/internal/utils"
 	"log"
+	"net/http"
+	"sync"
 
-	"github.com/gin-gonic/gin"
+	handler "hw-app/internal/handler"
 )
 
+// configs read from config.yaml
+var config *utils.Config
+
+// task queue（channel）
+var TaskQueue chan domain.Task
+var ResultQueue chan domain.Result
+var TransactionQueue chan domain.Transaction
+
 func main() {
-	// 初始化数据库
-	err := mysql_connector.InitDB()
+	// load configs
+	var err error
+	config, err = utils.LoadConfig("config.yaml")
 	if err != nil {
-		log.Fatal("Fail to create database connection: ", err)
+		log.Fatalf("Error loading config: %v", err)
 	}
-	defer mysql_connector.CloseDB()
 
-	// 自动迁移
-	// db.AutoMigrate(&mysql_connector.User{})
+	// RequestHandler thread, deals with tasks in TaskQueue
+	TaskQueue = make(chan domain.Task, config.Queue.BufferSize)
+	ResultQueue = make(chan domain.Result, config.Queue.BufferSize)
+	TransactionQueue = make(chan domain.Transaction, config.Queue.BufferSize)
+	var wg sync.WaitGroup
+	for i := 0; i < config.ReqHandler.NumReqHandlers; i++ {
+		wg.Add(1)
+		DB, err := mysql_connector.IntializeDBConn()
+		if err != nil {
+			break
+		}
+		handler.PoolDB = append(handler.PoolDB, DB)
+		go handler.RequestHandler(i, &wg)
+	}
 
-	// 创建 Gin 实例
-	r := gin.Default()
+	// Result handler thread, deals with ResultQueue and return response
+	go handler.ResultHandler()
 
-	// RESTful API 路由
-	// r.GET("/users", mysql_connector.GetUsers)
-	// r.POST("/users", mysql_connector.CreateUser)
-	// r.GET("/users/:id", mysql_connector.GetUser)
-	// r.PUT("/users/:id", mysql_connector.UpdateUser)
-	// r.DELETE("/users/:id", mysql_connector.DeleteUser)
-	// r.PUT("/transactions/deposit", ganache_connector.DepositTransaction)
-	// r.PUT("/transactions/withdraw", ganache_connector.WithDrawTransaction)
-	r.POST("/tokenClaim", claim.CreateClaimReq)
-	r.GET("/tokenClaim/claims", claim.GetTokenClaims)
-	r.POST("/approval", claim.CreateClaimApproval)
-	r.GET("/approval", claim.GetClaimApproval)
+	// Chain connector thread, deals with TransactionQueue and interacts with the chain
+	go handler.GanacheHandler()
 
-	// 启动服务器
-	r.Run(":8080")
+	//main thread, process http requests and put them in the TaskQueue
+	http.HandleFunc("/tokenClaim", service.HandleClaimRequest)
+
+	// start HTTP service
+	port := fmt.Sprintf(":%d", config.Server.Port)
+	fmt.Printf("Server is running on port %s\n", port)
+	log.Fatal(http.ListenAndServe(port, nil))
+
+	// wait till all ReqHandlers are done with tasks
+	wg.Wait()
 }

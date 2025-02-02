@@ -1,6 +1,8 @@
-package mysql_connector
+package domain
 
 import "time"
+
+//define table fields in Mysql
 
 type Claim struct {
 	ID              int32     `json:"id"`

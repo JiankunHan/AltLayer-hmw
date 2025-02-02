@@ -1,0 +1,6 @@
+queue:
+  buffer_size: 100
+server:
+  port: 8080
+req_handlers:
+  num_req_handlers: 1

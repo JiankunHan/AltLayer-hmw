@@ -5,35 +5,47 @@ import (
 	"strconv"
 	"time"
 
+	domain "hw-app/internal/domain"
+
 	"database/sql"
 
 	_ "github.com/go-sql-driver/mysql"
 )
 
 // Global DB variable
-var DB *sql.DB
+// var DB *sql.DB
+
+func IntializeDBConn() (*sql.DB, error) {
+	// initalize Mysql connection. It can be a connection pool. But we use one connection for simplification.
+	DB, err := InitDB()
+	if err != nil {
+		log.Fatal("Fail to create database connection: ", err)
+		return nil, err
+	}
+	defer CloseDB(DB)
+	return DB, nil
+}
 
 // 初始化 MySQL 连接
-func InitDB() error {
-	var err error
+func InitDB() (*sql.DB, error) {
 	// 修改成你自己数据库的连接信息
 	dsn := "root:Jiankun9598+@tcp(mysql:3306)/homework_db?charset=utf8mb4&parseTime=True&loc=Local"
-	DB, err = sql.Open("mysql", dsn)
+	DB, err := sql.Open("mysql", dsn)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Check if the connection is valid
 	if err := DB.Ping(); err != nil {
-		return err
+		return nil, err
 	}
 
 	log.Println("Database connected successfully.")
-	return nil
+	return DB, nil
 }
 
 // CloseDB closes the database connection
-func CloseDB() error {
+func CloseDB(DB *sql.DB) error {
 	if DB != nil {
 		return DB.Close()
 	}
@@ -84,12 +96,12 @@ func CreateClaimApproval(user string, claimId int, status int) (int64, error) {
 	return lastInsertID, nil
 }
 
-func GetTokenClaim(user *string, claimID *int, status *int, claimType *int) ([]Claim, error) {
+func GetTokenClaim(user *string, claimID *int, status *int, claimType *int) ([]domain.Claim, error) {
 	if DB == nil {
 		log.Fatal("Database connection is lost")
 	}
 
-	var claims []Claim
+	var claims []domain.Claim
 	whereConditionExist := false
 
 	query := "SELECT id, claimer, contract_address, private_key, claim_type, amount, claim_status, created_time, updated_time FROM TokenClaims"
@@ -152,7 +164,7 @@ func GetTokenClaim(user *string, claimID *int, status *int, claimType *int) ([]C
 	defer rows.Close()
 
 	for rows.Next() {
-		var claim Claim
+		var claim domain.Claim
 		if err := rows.Scan(&claim.ID, &claim.Claimer, &claim.ContractAddress, &claim.PrivateKey, &claim.ClaimType, &claim.Amount, &claim.ClaimStatus, &claim.CreatedTime, &claim.UpdatedTime); err != nil {
 			return nil, err
 		}
@@ -173,12 +185,12 @@ func UpdateTokenClaimsStatus(claim_status int, id int, trxhash string) error {
 	return err
 }
 
-func GetApprovals(user *string, ID *int, claimID *int, approve_status *int) ([]Approval, error) {
+func GetApprovals(user *string, ID *int, claimID *int, approve_status *int) ([]domain.Approval, error) {
 	if DB == nil {
 		log.Fatal("Database connection is lost")
 	}
 
-	var approvals []Approval
+	var approvals []domain.Approval
 	whereConditionExist := false
 
 	query := "SELECT id, claim_id, approver, approve_status, created_time, updated_time FROM WithdrawApprovals"
@@ -241,7 +253,7 @@ func GetApprovals(user *string, ID *int, claimID *int, approve_status *int) ([]A
 	defer rows.Close()
 
 	for rows.Next() {
-		var approval Approval
+		var approval domain.Approval
 		if err := rows.Scan(&approval.ID, &approval.ClaimId, &approval.Approver, &approval.ApproveStatus, &approval.CreatedTime, &approval.UpdatedTime); err != nil {
 			return nil, err
 		}

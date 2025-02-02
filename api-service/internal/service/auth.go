@@ -1,4 +1,4 @@
-package claim
+package service
 
 func in(target string, str_array []string) bool {
 	for _, element := range str_array {
