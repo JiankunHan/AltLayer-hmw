@@ -2,10 +2,12 @@ package service
 
 import (
 	"fmt"
-	main "hw-app"
 	domain "hw-app/internal/domain"
+	handler "hw-app/internal/handler"
+	utils "hw-app/internal/utils"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 // process http request, and enqueue tasks
@@ -20,23 +22,37 @@ func HandleClaimRequest(w http.ResponseWriter, r *http.Request) {
 	claimID_str := query.Get("claim_id")
 	claimStatus_str := query.Get("claim_status")
 	claimID, err := strconv.Atoi(claimID_str)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(fmt.Sprintf("Wrong format in parameter - claim_id")))
+	var task domain.Task
+	//claimStatus_str and claimID_str can be empty string when http url does not contain this parameter
+	if err != nil && len(claimID_str) != 0 {
+		handler.HttpResponse(w, []byte("Wrong format in parameter - claim_id"), http.StatusBadRequest)
 		return
+	}
+	if len(claimID_str) == 0 {
+		claimID = -1
 	}
 	claimStatus, err := strconv.Atoi(claimStatus_str)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(fmt.Sprintf("Wrong format in parameter - claim_status")))
+	if err != nil && len(claimStatus_str) != 0 {
+		handler.HttpResponse(w, []byte("Wrong format in parameter - claim_status"), http.StatusBadRequest)
 		return
 	}
+	if len(claimStatus_str) == 0 {
+		claimStatus = -1
+	}
+
+	taskId := utils.GenerateTaskID()
+	w.Header().Set("Content-Type", "application/json")
+	// 为每个请求创建一个唯一的 response 通道
+	respChan := make(chan string, 1)
+	// 存储请求的 response 通道
+	utils.ResponseMap.Store(taskId, respChan)
+
 	taskInfo := domain.TaskInfo{
 		Type:         cliamType,
 		Amount:       amount,
 		User:         user,
 		CliamId:      claimID,
-		ClaimStatus:  int8(claimStatus),
+		ClaimStatus:  claimStatus,
 		ContractAddr: ContractAddr,
 		PrivateKey:   privateKey,
 		Operation:    operation,
@@ -49,26 +65,38 @@ func HandleClaimRequest(w http.ResponseWriter, r *http.Request) {
 	case "POST":
 		reqMethod = "POST"
 	default:
-		// 如果请求方法是其他类型，可以返回 405 Method Not Allowed 错误
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		w.Write([]byte("Method Not Allowed"))
+		// return '405 Method Not Allowed'
+		handler.HttpResponse(w, []byte("Method Not Allowed"), http.StatusMethodNotAllowed)
+		return
 	}
 
 	taskTatus := 0
-	task := domain.Task{
-		ID:        len(main.TaskQueue) + 1,
+	task = domain.Task{
+		ID:        taskId,
 		TaskInfo:  taskInfo,
 		Status:    taskTatus,
-		Response:  w,
 		ReqMethod: reqMethod,
+		RespChan:  respChan,
 	}
 
 	select {
-	case main.TaskQueue <- task:
+	case utils.TaskQueue <- task:
 		// in queue, when task queue is not full
+		fmt.Println("task enqueue:", task.ID)
+		// w.WriteHeader(http.StatusAccepted)
+		// w.Write([]byte(fmt.Sprintf("Task %d accepted.\n", task.ID)))
 	default:
 		// return 503 if task queue is full
-		w.WriteHeader(http.StatusServiceUnavailable)
-		w.Write([]byte("Task queue is full, try again later"))
+		handler.HttpResponse(w, []byte("Task queue is full, try again later"), http.StatusServiceUnavailable)
 	}
+
+	// 等待 worker 处理完成，设置超时控制
+	select {
+	case result := <-respChan:
+		fmt.Fprintf(w, result)
+	case <-time.After(5 * time.Second): // 超时返回
+		http.Error(w, "Request timeout", http.StatusGatewayTimeout)
+	}
+	// 清理 map，防止内存泄漏
+	utils.ResponseMap.Delete(taskId)
 }

@@ -21,6 +21,8 @@ services:
     depends_on:
       - mysql
       - ganache
+    volumes:
+      - ./api-service/configs/config.yaml:/app/config.yaml
 
   mysql:
     image: mysql:8.0

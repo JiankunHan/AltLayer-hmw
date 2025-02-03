@@ -3,36 +3,31 @@ package main
 import (
 	"fmt"
 	domain "hw-app/internal/domain"
+	handler "hw-app/internal/handler"
 	mysql_connector "hw-app/internal/repository"
 	service "hw-app/internal/service"
 	utils "hw-app/internal/utils"
 	"log"
 	"net/http"
 	"sync"
-
-	handler "hw-app/internal/handler"
 )
 
 // configs read from config.yaml
 var config *utils.Config
 
-// task queue（channel）
-var TaskQueue chan domain.Task
-var ResultQueue chan domain.Result
-var TransactionQueue chan domain.Transaction
-
 func main() {
 	// load configs
 	var err error
-	config, err = utils.LoadConfig("config.yaml")
+	config, err = utils.LoadConfig("/app/config.yaml")
 	if err != nil {
 		log.Fatalf("Error loading config: %v", err)
 	}
 
 	// RequestHandler thread, deals with tasks in TaskQueue
-	TaskQueue = make(chan domain.Task, config.Queue.BufferSize)
-	ResultQueue = make(chan domain.Result, config.Queue.BufferSize)
-	TransactionQueue = make(chan domain.Transaction, config.Queue.BufferSize)
+	utils.TaskQueue = make(chan domain.Task, config.Queue.BufferSize)
+	utils.ResultQueue = make(chan domain.Result, config.Queue.BufferSize)
+	utils.TransactionQueue = make(chan domain.Transaction, config.Queue.BufferSize)
+
 	var wg sync.WaitGroup
 	for i := 0; i < config.ReqHandler.NumReqHandlers; i++ {
 		wg.Add(1)
@@ -45,10 +40,12 @@ func main() {
 	}
 
 	// Result handler thread, deals with ResultQueue and return response
-	go handler.ResultHandler()
+	// wg.Add(1)
+	// go handler.ResultHandler(&wg)
 
 	// Chain connector thread, deals with TransactionQueue and interacts with the chain
-	go handler.GanacheHandler()
+	wg.Add(1)
+	go handler.GanacheHandler(&wg)
 
 	//main thread, process http requests and put them in the TaskQueue
 	http.HandleFunc("/tokenClaim", service.HandleClaimRequest)

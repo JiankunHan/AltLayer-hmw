@@ -11,7 +11,7 @@ curl -X POST "http://localhost:8080/tokenClaim?amount=1000000000000000000&user=J
 curl -X POST "http://localhost:8080/tokenClaim?amount=500000000000000000&user=Jiankun&contract_address=0x5f8e26fAcC23FA4cbd87b8d9Dbbd33D5047abDE1&private_key=0x4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d&operation=withdraw"
 
 #retrieve a claim
-curl -X GET "http://localhost:8080/tokenClaim/claims"
+curl -X GET "http://localhost:8080/tokenClaim/"
 curl -X GET "http://localhost:8080/tokenClaim/claims?user=Jiankun"
 curl -X GET "http://localhost:8080/tokenClaim/claims?type=withdraw"
 curl -X GET "http://localhost:8080/tokenClaim/claims?id=2"

@@ -1,19 +1,8 @@
 package service
 
-import (
-	"fmt"
-	"log"
-	"strconv"
-
-	ganache_connector "hw-app/internal/middleware"
-	mysql_connector "hw-app/internal/repository"
-
-	"github.com/gin-gonic/gin"
-)
-
-func checkIdenticalApproval(user *string, claimID *int, approve_status *int) (bool, error) {
+/*func checkIdenticalApproval(user *string, claimID *int, approve_status *int) (bool, error) {
 	//if there is a record in WithdrawApprovals with same approver, claim_id and approve_status, reject this request
-	claims, err := mysql_connector.GetApprovals(user, nil, claimID, approve_status)
+	claims, err := mysql_connector.GetApprovals(nil, user, nil, claimID, approve_status)
 	if err != nil {
 		return true, err
 	}
@@ -25,12 +14,12 @@ func checkIdenticalApproval(user *string, claimID *int, approve_status *int) (bo
 
 func updateIfRecordExist(user *string, claimID *int, approve_status int) (int64, error) {
 	//if there is a record in WithdrawApprovals with same approver, claim_id, update the approve_status
-	claims, err := mysql_connector.GetApprovals(user, nil, claimID, nil)
+	claims, err := mysql_connector.GetApprovals(nil, user, nil, claimID, nil)
 	if err != nil {
 		return 0, err
 	}
 	if len(claims) > 0 {
-		err = mysql_connector.UpdateWithdrawApprovalsStatus(approve_status, int(claims[0].ID))
+		err = mysql_connector.UpdateWithdrawApprovalsStatus(nil, approve_status, int(claims[0].ID))
 		if err != nil {
 			return 0, err
 		}
@@ -45,7 +34,7 @@ func CreateClaimApproval(c *gin.Context) {
 	operation := c.Query("operation")
 	claimID, err := strconv.Atoi(claimID_str)
 	var approve_status int
-	var res tokenClaimRes
+	var res domain.tokenClaimRes
 
 	if operation == "approve" {
 		approve_status = 1
@@ -58,7 +47,7 @@ func CreateClaimApproval(c *gin.Context) {
 		return
 	}
 
-	if !AuthManager(user) {
+	if !utils.AuthManager(user) {
 		c.JSON(401, gin.H{"error": "Manager unauthorized to approve/unapprove"})
 		return
 	}
@@ -92,7 +81,7 @@ func CreateClaimApproval(c *gin.Context) {
 		return
 	}
 
-	lastInsertID, err := mysql_connector.CreateClaimApproval(user, claimID, approve_status)
+	lastInsertID, err := mysql_connector.CreateClaimApproval(nil, user, claimID, approve_status)
 	if err != nil {
 		c.JSON(400, gin.H{"error": err.Error()})
 		return
@@ -148,7 +137,7 @@ func GetClaimApproval(c *gin.Context) {
 		status_pt = &status
 	}
 
-	claims, err := mysql_connector.GetApprovals(approver_pt, id_pt, claim_id_pt, status_pt)
+	claims, err := mysql_connector.GetApprovals(nil, approver_pt, id_pt, claim_id_pt, status_pt)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
@@ -159,7 +148,7 @@ func GetClaimApproval(c *gin.Context) {
 func isApprovalsAdequate(claimID int) (bool, error) {
 	//check if there are two records in table WithdrawApprovals, approve_status = 1 and claim_id = claimID
 	approve_status := 1
-	claims, err := mysql_connector.GetApprovals(nil, nil, &claimID, &approve_status)
+	claims, err := mysql_connector.GetApprovals(nil, nil, nil, &claimID, &approve_status)
 	if err != nil {
 		return false, err
 	}
@@ -195,7 +184,7 @@ func CheckAndRaiseTokenTransaction(claimID int) (bool, string, error) {
 	}
 
 	//get original claim
-	claims, err := mysql_connector.GetTokenClaim(nil, &claimID, nil, nil)
+	claims, err := mysql_connector.GetTokenClaim(nil, nil, &claimID, nil, nil)
 	if err != nil {
 		return false, "", err
 	}
@@ -220,7 +209,7 @@ func CheckAndRaiseTokenTransaction(claimID int) (bool, string, error) {
 			err := fmt.Errorf("Transaction failed for claim id: %d, manual interference required", claimID)
 			return false, "", err
 		}
-		err := mysql_connector.UpdateTokenClaimsStatus(1, claimID, trxhash)
+		err := mysql_connector.UpdateTokenClaimsStatus(nil, 1, claimID, trxhash)
 		if err != nil {
 			err := fmt.Errorf("Transaction completed but failed to update database for claim id: %d, manual interference required", claimID)
 			return false, "", err
@@ -231,7 +220,7 @@ func CheckAndRaiseTokenTransaction(claimID int) (bool, string, error) {
 			err := fmt.Errorf("Transaction failed for claim id: %d, manual interference required", claimID)
 			return false, "", err
 		}
-		err := mysql_connector.UpdateTokenClaimsStatus(1, claimID, trxhash)
+		err := mysql_connector.UpdateTokenClaimsStatus(nil, 1, claimID, trxhash)
 		if err != nil {
 			err := fmt.Errorf("Transaction completed but failed to update database for claim id: %d, manual interference required", claimID)
 			return false, "", err
@@ -240,3 +229,4 @@ func CheckAndRaiseTokenTransaction(claimID int) (bool, string, error) {
 
 	return true, trxhash, nil
 }
+*/

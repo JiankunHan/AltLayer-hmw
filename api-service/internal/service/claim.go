@@ -1,17 +1,6 @@
 package service
 
-import (
-	"fmt"
-	"log"
-	"math/big"
-	"strconv"
-
-	ganache_connector "hw-app/internal/middleware"
-	mysql_connector "hw-app/internal/repository"
-
-	"github.com/gin-gonic/gin"
-)
-
+/*
 type tokenClaimRes struct {
 	User                 string `json:"user"`
 	LastInsertID         int64  `json:"last_inesrt_id"`
@@ -126,3 +115,4 @@ func GetTokenClaims(c *gin.Context) {
 	}
 	c.JSON(200, claims)
 }
+*/

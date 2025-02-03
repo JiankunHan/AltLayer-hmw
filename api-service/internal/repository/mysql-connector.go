@@ -22,7 +22,7 @@ func IntializeDBConn() (*sql.DB, error) {
 		log.Fatal("Fail to create database connection: ", err)
 		return nil, err
 	}
-	defer CloseDB(DB)
+	// defer CloseDB(DB)
 	return DB, nil
 }
 
@@ -52,7 +52,7 @@ func CloseDB(DB *sql.DB) error {
 	return nil
 }
 
-func CreateClaimReq(user string, claimType uint8, transactionAmount string, address string, privateKey string) (int64, error) {
+func CreateClaimReq(DB *sql.DB, user string, claimType uint8, transactionAmount string, address string, privateKey string) (int64, error) {
 	if DB == nil {
 		log.Fatal("Database connection is lost")
 	}
@@ -74,7 +74,7 @@ func CreateClaimReq(user string, claimType uint8, transactionAmount string, addr
 	return lastInsertID, nil
 }
 
-func CreateClaimApproval(user string, claimId int, status int) (int64, error) {
+func CreateClaimApproval(DB *sql.DB, user string, claimId int, status int) (int64, error) {
 	if DB == nil {
 		log.Fatal("Database connection is lost")
 	}
@@ -96,7 +96,7 @@ func CreateClaimApproval(user string, claimId int, status int) (int64, error) {
 	return lastInsertID, nil
 }
 
-func GetTokenClaim(user *string, claimID *int, status *int, claimType *int) ([]domain.Claim, error) {
+func GetTokenClaim(DB *sql.DB, user *string, claimID *int, status *int, claimType *int) ([]domain.Claim, error) {
 	if DB == nil {
 		log.Fatal("Database connection is lost")
 	}
@@ -105,7 +105,7 @@ func GetTokenClaim(user *string, claimID *int, status *int, claimType *int) ([]d
 	whereConditionExist := false
 
 	query := "SELECT id, claimer, contract_address, private_key, claim_type, amount, claim_status, created_time, updated_time FROM TokenClaims"
-	if user != nil || claimID != nil || status != nil || claimType != nil {
+	if user != nil || (claimID != nil && *claimID >= 0) || (status != nil && *status >= 0) || claimType != nil {
 		query += " where "
 	}
 	if user != nil {
@@ -115,7 +115,7 @@ func GetTokenClaim(user *string, claimID *int, status *int, claimType *int) ([]d
 		query += userClause
 		whereConditionExist = true
 	}
-	if claimID != nil {
+	if claimID != nil && *claimID >= 0 {
 		var idClause string
 		claimId := strconv.Itoa(*claimID)
 		if whereConditionExist {
@@ -128,7 +128,7 @@ func GetTokenClaim(user *string, claimID *int, status *int, claimType *int) ([]d
 		query += idClause
 		whereConditionExist = true
 	}
-	if status != nil {
+	if status != nil && *status >= 0 {
 		var statusClause string
 		Status := strconv.Itoa(*status)
 		if whereConditionExist {
@@ -178,14 +178,14 @@ func GetTokenClaim(user *string, claimID *int, status *int, claimType *int) ([]d
 	return claims, nil
 }
 
-func UpdateTokenClaimsStatus(claim_status int, id int, trxhash string) error {
+func UpdateTokenClaimsStatus(DB *sql.DB, claim_status int, id int, trxhash string) error {
 	query := "UPDATE TokenClaims SET claim_status = ?, updated_time = ?, transaction_hash = ? WHERE id = ?"
 	currentTime := time.Now()
 	_, err := DB.Exec(query, claim_status, currentTime, trxhash, id)
 	return err
 }
 
-func GetApprovals(user *string, ID *int, claimID *int, approve_status *int) ([]domain.Approval, error) {
+func GetApprovals(DB *sql.DB, user *string, ID *int, claimID *int, approve_status *int) ([]domain.Approval, error) {
 	if DB == nil {
 		log.Fatal("Database connection is lost")
 	}
@@ -267,7 +267,7 @@ func GetApprovals(user *string, ID *int, claimID *int, approve_status *int) ([]d
 	return approvals, nil
 }
 
-func UpdateWithdrawApprovalsStatus(approve_status int, id int) error {
+func UpdateWithdrawApprovalsStatus(DB *sql.DB, approve_status int, id int) error {
 	query := "UPDATE WithdrawApprovals SET approve_status = ?, updated_time = ? WHERE id = ?"
 	currentTime := time.Now()
 	_, err := DB.Exec(query, approve_status, currentTime, id)
