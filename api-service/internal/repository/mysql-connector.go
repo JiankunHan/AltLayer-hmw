@@ -194,7 +194,7 @@ func GetApprovals(DB *sql.DB, user *string, ID *int, claimID *int, approve_statu
 	whereConditionExist := false
 
 	query := "SELECT id, claim_id, approver, approve_status, created_time, updated_time FROM WithdrawApprovals"
-	if user != nil || ID != nil || claimID != nil || approve_status != nil {
+	if user != nil || (ID != nil && *ID >= 0) || (claimID != nil && *claimID >= 0) || (approve_status != nil && *approve_status >= 0) {
 		query += " where "
 	}
 	if user != nil {
@@ -204,7 +204,7 @@ func GetApprovals(DB *sql.DB, user *string, ID *int, claimID *int, approve_statu
 		query += userClause
 		whereConditionExist = true
 	}
-	if ID != nil {
+	if ID != nil && *ID >= 0 {
 		var idClause string
 		ID := strconv.Itoa(*ID)
 		if whereConditionExist {
@@ -217,7 +217,7 @@ func GetApprovals(DB *sql.DB, user *string, ID *int, claimID *int, approve_statu
 		query += idClause
 		whereConditionExist = true
 	}
-	if claimID != nil {
+	if claimID != nil && *claimID >= 0 {
 		var idClause string
 		claimId := strconv.Itoa(*claimID)
 		if whereConditionExist {
@@ -230,7 +230,7 @@ func GetApprovals(DB *sql.DB, user *string, ID *int, claimID *int, approve_statu
 		query += idClause
 		whereConditionExist = true
 	}
-	if approve_status != nil {
+	if approve_status != nil && *approve_status >= 0 {
 		var statusClause string
 		Status := strconv.Itoa(*approve_status)
 		if whereConditionExist {

@@ -3,7 +3,6 @@ package service
 import (
 	"fmt"
 	domain "hw-app/internal/domain"
-	handler "hw-app/internal/handler"
 	utils "hw-app/internal/utils"
 	"net/http"
 	"strconv"
@@ -25,7 +24,7 @@ func HandleClaimRequest(w http.ResponseWriter, r *http.Request) {
 	var task domain.Task
 	//claimStatus_str and claimID_str can be empty string when http url does not contain this parameter
 	if err != nil && len(claimID_str) != 0 {
-		handler.HttpResponse(w, []byte("Wrong format in parameter - claim_id"), http.StatusBadRequest)
+		utils.HttpResponse(w, "Wrong format in parameter - claim_id", http.StatusBadRequest)
 		return
 	}
 	if len(claimID_str) == 0 {
@@ -33,7 +32,7 @@ func HandleClaimRequest(w http.ResponseWriter, r *http.Request) {
 	}
 	claimStatus, err := strconv.Atoi(claimStatus_str)
 	if err != nil && len(claimStatus_str) != 0 {
-		handler.HttpResponse(w, []byte("Wrong format in parameter - claim_status"), http.StatusBadRequest)
+		utils.HttpResponse(w, "Wrong format in parameter - claim_status", http.StatusBadRequest)
 		return
 	}
 	if len(claimStatus_str) == 0 {
@@ -66,7 +65,7 @@ func HandleClaimRequest(w http.ResponseWriter, r *http.Request) {
 		reqMethod = "POST"
 	default:
 		// return '405 Method Not Allowed'
-		handler.HttpResponse(w, []byte("Method Not Allowed"), http.StatusMethodNotAllowed)
+		utils.HttpResponse(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -76,6 +75,7 @@ func HandleClaimRequest(w http.ResponseWriter, r *http.Request) {
 		TaskInfo:  taskInfo,
 		Status:    taskTatus,
 		ReqMethod: reqMethod,
+		TaskType:  0,
 		RespChan:  respChan,
 	}
 
@@ -87,13 +87,13 @@ func HandleClaimRequest(w http.ResponseWriter, r *http.Request) {
 		// w.Write([]byte(fmt.Sprintf("Task %d accepted.\n", task.ID)))
 	default:
 		// return 503 if task queue is full
-		handler.HttpResponse(w, []byte("Task queue is full, try again later"), http.StatusServiceUnavailable)
+		utils.HttpResponse(w, "Task queue is full, try again later", http.StatusServiceUnavailable)
 	}
 
 	// 等待 worker 处理完成，设置超时控制
 	select {
 	case result := <-respChan:
-		fmt.Fprintf(w, result)
+		fmt.Fprintf(w, "%s", result)
 	case <-time.After(5 * time.Second): // 超时返回
 		http.Error(w, "Request timeout", http.StatusGatewayTimeout)
 	}

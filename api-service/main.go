@@ -25,7 +25,6 @@ func main() {
 
 	// RequestHandler thread, deals with tasks in TaskQueue
 	utils.TaskQueue = make(chan domain.Task, config.Queue.BufferSize)
-	utils.ResultQueue = make(chan domain.Result, config.Queue.BufferSize)
 	utils.TransactionQueue = make(chan domain.Transaction, config.Queue.BufferSize)
 
 	var wg sync.WaitGroup
@@ -39,16 +38,13 @@ func main() {
 		go handler.RequestHandler(i, &wg)
 	}
 
-	// Result handler thread, deals with ResultQueue and return response
-	// wg.Add(1)
-	// go handler.ResultHandler(&wg)
-
 	// Chain connector thread, deals with TransactionQueue and interacts with the chain
 	wg.Add(1)
 	go handler.GanacheHandler(&wg)
 
 	//main thread, process http requests and put them in the TaskQueue
 	http.HandleFunc("/tokenClaim", service.HandleClaimRequest)
+	http.HandleFunc("/approval", service.HandleApprovalRequest)
 
 	// start HTTP service
 	port := fmt.Sprintf(":%d", config.Server.Port)
