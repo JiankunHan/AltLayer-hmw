@@ -21,7 +21,7 @@ func HandleApprovalRequest(w http.ResponseWriter, r *http.Request) {
 	var task domain.Task
 
 	//approvalStatus_str, approvalID and claimID_str can be empty string when http url does not contain this parameter
-	claimID, err := strconv.Atoi(claimID_str)
+	claimID, err := strconv.ParseInt(claimID_str, 10, 64)
 	if err != nil && len(claimID_str) != 0 {
 		utils.HttpResponse(w, "Wrong format in parameter - claim_id", http.StatusBadRequest)
 		return
@@ -29,7 +29,7 @@ func HandleApprovalRequest(w http.ResponseWriter, r *http.Request) {
 	if len(claimID_str) == 0 {
 		claimID = -1
 	}
-	approvalID, err := strconv.Atoi(approvalID_str)
+	approvalID, err := strconv.ParseInt(approvalID_str, 10, 64)
 	//approvalStatus_str and claimID_str can be empty string when http url does not contain this parameter
 	if err != nil && len(approvalID_str) != 0 {
 		utils.HttpResponse(w, "Wrong format in parameter - approval_id", http.StatusBadRequest)
@@ -57,7 +57,7 @@ func HandleApprovalRequest(w http.ResponseWriter, r *http.Request) {
 	taskInfo := domain.TaskInfo{
 		Type:           operationType,
 		User:           user,
-		CliamId:        claimID,
+		ClaimId:        claimID,
 		ApprovalId:     approvalID,
 		ApprovalStatus: approvalStatus,
 		Operation:      operation,
@@ -89,8 +89,6 @@ func HandleApprovalRequest(w http.ResponseWriter, r *http.Request) {
 	case utils.TaskQueue <- task:
 		// in queue, when task queue is not full
 		fmt.Println("task enqueue:", task.ID)
-		// w.WriteHeader(http.StatusAccepted)
-		// w.Write([]byte(fmt.Sprintf("Task %d accepted.\n", task.ID)))
 	default:
 		// return 503 if task queue is full
 		utils.HttpResponse(w, "Task queue is full, try again later", http.StatusServiceUnavailable)
@@ -99,7 +97,7 @@ func HandleApprovalRequest(w http.ResponseWriter, r *http.Request) {
 	// 等待 worker 处理完成，设置超时控制
 	select {
 	case result := <-respChan:
-		fmt.Fprintf(w, result)
+		fmt.Fprintf(w, "%s", result)
 	case <-time.After(5 * time.Second): // 超时返回
 		http.Error(w, "Request timeout", http.StatusGatewayTimeout)
 	}

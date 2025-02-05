@@ -17,6 +17,9 @@ type Config struct {
 	ReqHandler struct {
 		NumReqHandlers int `yaml:"num_req_handlers"`
 	} `yaml:"req_handlers"`
+	Transaction struct {
+		MaxRetryTimes int `yaml:"max_retries"`
+	} `yaml:"transaction"`
 }
 
 func LoadConfig(filename string) (*Config, error) {

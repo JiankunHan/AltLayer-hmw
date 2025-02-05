@@ -20,7 +20,7 @@ func HandleClaimRequest(w http.ResponseWriter, r *http.Request) {
 	cliamType := query.Get("type") // GET request, type can be withdraw/deposit
 	claimID_str := query.Get("claim_id")
 	claimStatus_str := query.Get("claim_status")
-	claimID, err := strconv.Atoi(claimID_str)
+	claimID, err := strconv.ParseInt(claimID_str, 10, 64)
 	var task domain.Task
 	//claimStatus_str and claimID_str can be empty string when http url does not contain this parameter
 	if err != nil && len(claimID_str) != 0 {
@@ -50,7 +50,7 @@ func HandleClaimRequest(w http.ResponseWriter, r *http.Request) {
 		Type:         cliamType,
 		Amount:       amount,
 		User:         user,
-		CliamId:      claimID,
+		ClaimId:      claimID,
 		ClaimStatus:  claimStatus,
 		ContractAddr: ContractAddr,
 		PrivateKey:   privateKey,

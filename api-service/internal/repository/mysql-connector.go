@@ -74,7 +74,7 @@ func CreateClaimReq(DB *sql.DB, user string, claimType uint8, transactionAmount 
 	return lastInsertID, nil
 }
 
-func CreateClaimApproval(DB *sql.DB, user string, claimId int, status int) (int64, error) {
+func CreateClaimApproval(DB *sql.DB, user string, claimId int64, status int) (int64, error) {
 	if DB == nil {
 		log.Fatal("Database connection is lost")
 	}
@@ -96,7 +96,7 @@ func CreateClaimApproval(DB *sql.DB, user string, claimId int, status int) (int6
 	return lastInsertID, nil
 }
 
-func GetTokenClaim(DB *sql.DB, user *string, claimID *int, status *int, claimType *int) ([]domain.Claim, error) {
+func GetTokenClaim(DB *sql.DB, user *string, claimID *int64, status *int, claimType *int) ([]domain.Claim, error) {
 	if DB == nil {
 		log.Fatal("Database connection is lost")
 	}
@@ -117,7 +117,7 @@ func GetTokenClaim(DB *sql.DB, user *string, claimID *int, status *int, claimTyp
 	}
 	if claimID != nil && *claimID >= 0 {
 		var idClause string
-		claimId := strconv.Itoa(*claimID)
+		claimId := strconv.FormatInt(*claimID, 10)
 		if whereConditionExist {
 			idClause = " and id = "
 			idClause += claimId
@@ -178,14 +178,17 @@ func GetTokenClaim(DB *sql.DB, user *string, claimID *int, status *int, claimTyp
 	return claims, nil
 }
 
-func UpdateTokenClaimsStatus(DB *sql.DB, claim_status int, id int, trxhash string) error {
+func UpdateTokenClaimsStatus(DB *sql.DB, claim_status int, id int64, trxhash string) error {
+	if DB == nil {
+		log.Fatal("Database connection is lost")
+	}
 	query := "UPDATE TokenClaims SET claim_status = ?, updated_time = ?, transaction_hash = ? WHERE id = ?"
 	currentTime := time.Now()
 	_, err := DB.Exec(query, claim_status, currentTime, trxhash, id)
 	return err
 }
 
-func GetApprovals(DB *sql.DB, user *string, ID *int, claimID *int, approve_status *int) ([]domain.Approval, error) {
+func GetApprovals(DB *sql.DB, user *string, ID *int64, claimID *int64, approve_status *int) ([]domain.Approval, error) {
 	if DB == nil {
 		log.Fatal("Database connection is lost")
 	}
@@ -206,7 +209,7 @@ func GetApprovals(DB *sql.DB, user *string, ID *int, claimID *int, approve_statu
 	}
 	if ID != nil && *ID >= 0 {
 		var idClause string
-		ID := strconv.Itoa(*ID)
+		ID := strconv.FormatInt(*ID, 10)
 		if whereConditionExist {
 			idClause = " and id = "
 			idClause += ID
@@ -219,7 +222,7 @@ func GetApprovals(DB *sql.DB, user *string, ID *int, claimID *int, approve_statu
 	}
 	if claimID != nil && *claimID >= 0 {
 		var idClause string
-		claimId := strconv.Itoa(*claimID)
+		claimId := strconv.FormatInt(*claimID, 10)
 		if whereConditionExist {
 			idClause = " and claim_id = "
 			idClause += claimId

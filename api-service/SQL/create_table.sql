@@ -3,7 +3,7 @@ CREATE DATABASE IF NOT EXISTS homework_db;
 USE homework_db;
 
 CREATE TABLE IF NOT EXISTS TokenClaims (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
     claimer VARCHAR(100) NOT NULL,
     contract_address VARCHAR(100) NOT NULL,
     private_key VARCHAR(100) NOT NULL,
@@ -16,8 +16,8 @@ CREATE TABLE IF NOT EXISTS TokenClaims (
 );
 
 CREATE TABLE IF NOT EXISTS WithdrawApprovals (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    claim_id INT NOT NULL,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    claim_id BIGINT NOT NULL,
     approver VARCHAR(100) NOT NULL,
     approve_status TINYINT DEFAULT 1,
     created_time DATETIME,

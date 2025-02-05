@@ -40,7 +40,8 @@ func main() {
 
 	// Chain connector thread, deals with TransactionQueue and interacts with the chain
 	wg.Add(1)
-	go handler.GanacheHandler(&wg)
+	DB, err := mysql_connector.IntializeDBConn()
+	go handler.GanacheHandler(DB, config.Transaction.MaxRetryTimes, &wg)
 
 	//main thread, process http requests and put them in the TaskQueue
 	http.HandleFunc("/tokenClaim", service.HandleClaimRequest)

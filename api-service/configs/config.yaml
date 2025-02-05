@@ -4,3 +4,5 @@ server:
   port: 8080
 req_handlers:
   num_req_handlers: 1
+transaction:
+  max_retries: 3

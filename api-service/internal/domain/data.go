@@ -5,7 +5,7 @@ import "time"
 //define table fields in Mysql
 
 type Claim struct {
-	ID              int32     `json:"id"`
+	ID              int64     `json:"id"`
 	Claimer         string    `json:"claimer"`
 	ContractAddress string    `json:"contract_address"`
 	PrivateKey      string    `json:"private_key"`
@@ -18,8 +18,8 @@ type Claim struct {
 }
 
 type Approval struct {
-	ID            int32     `json:"id"`
-	ClaimId       int32     `json:"claim_id"`
+	ID            int64     `json:"id"`
+	ClaimId       int64     `json:"claim_id"`
 	Approver      string    `json:"approver"`
 	ApproveStatus int8      `json:"approve_status"`
 	CreatedTime   time.Time `json:"created_time"`

@@ -32,16 +32,16 @@ func dispatchHttpRequest(task domain.Task, DB *sql.DB) {
 	if task.TaskType == 0 {
 		switch task.ReqMethod {
 		case "GET":
-			GetTokenClaims(DB, task, task.TaskInfo.User, task.TaskInfo.CliamId, task.TaskInfo.ClaimStatus, task.TaskInfo.Type)
+			GetTokenClaims(DB, task, task.TaskInfo.User, task.TaskInfo.ClaimId, task.TaskInfo.ClaimStatus, task.TaskInfo.Type)
 		case "POST":
 			CreateClaimReq(DB, task, task.TaskInfo.User, task.TaskInfo.Amount, task.TaskInfo.Operation, task.TaskInfo.ContractAddr, task.TaskInfo.PrivateKey)
 		}
 	} else if task.TaskType == 1 {
 		switch task.ReqMethod {
 		case "GET":
-			GetClaimApproval(DB, task, task.TaskInfo.User, task.TaskInfo.CliamId, task.TaskInfo.ApprovalId, task.TaskInfo.ApprovalStatus)
+			GetClaimApproval(DB, task, task.TaskInfo.User, task.TaskInfo.ClaimId, task.TaskInfo.ApprovalId, task.TaskInfo.ApprovalStatus)
 		case "POST":
-			CreateClaimApproval(DB, task, task.TaskInfo.User, task.TaskInfo.Operation, task.TaskInfo.CliamId)
+			CreateClaimApproval(DB, task, task.TaskInfo.User, task.TaskInfo.Operation, task.TaskInfo.ClaimId)
 		}
 	}
 
@@ -111,9 +111,9 @@ func CreateClaimReq(DB *sql.DB, task domain.Task, user string, transactionAmount
 	utils.BuildResultAndEnqueue(string(resJsonStr), http.StatusOK, task.ID, task)
 }
 
-func GetTokenClaims(DB *sql.DB, task domain.Task, user string, id int, status int, claimTypeStr string) {
+func GetTokenClaims(DB *sql.DB, task domain.Task, user string, id int64, status int, claimTypeStr string) {
 	var user_pt *string
-	var id_pt *int
+	var id_pt *int64
 	var status_pt *int
 	var type_pt *int
 	if user != "" {
@@ -146,7 +146,7 @@ func GetTokenClaims(DB *sql.DB, task domain.Task, user string, id int, status in
 	utils.BuildResultAndEnqueue(string(claimsJsonStr), http.StatusOK, task.ID, task)
 }
 
-func checkIdenticalApproval(DB *sql.DB, user *string, claimID *int, approve_status *int) (bool, error) {
+func checkIdenticalApproval(DB *sql.DB, user *string, claimID *int64, approve_status *int) (bool, error) {
 	//if there is a record in WithdrawApprovals with same approver, claim_id and approve_status, reject this request
 	claims, err := mysql_connector.GetApprovals(DB, user, nil, claimID, approve_status)
 	if err != nil {
@@ -158,7 +158,7 @@ func checkIdenticalApproval(DB *sql.DB, user *string, claimID *int, approve_stat
 	return false, nil
 }
 
-func updateIfRecordExist(DB *sql.DB, user *string, claimID *int, approve_status int) (int64, error) {
+func updateIfRecordExist(DB *sql.DB, user *string, claimID *int64, approve_status int) (int64, error) {
 	//if there is a record in WithdrawApprovals with same approver, claim_id, update the approve_status
 	claims, err := mysql_connector.GetApprovals(DB, user, nil, claimID, nil)
 	if err != nil {
@@ -174,7 +174,7 @@ func updateIfRecordExist(DB *sql.DB, user *string, claimID *int, approve_status 
 	return 0, nil
 }
 
-func CreateClaimApproval(DB *sql.DB, task domain.Task, user string, operation string, claimID int) {
+func CreateClaimApproval(DB *sql.DB, task domain.Task, user string, operation string, claimID int64) {
 	var approve_status int
 	var res domain.HttpRequestRes
 
@@ -207,22 +207,41 @@ func CreateClaimApproval(DB *sql.DB, task domain.Task, user string, operation st
 		return
 	}
 	if updatedApprovalRecord != 0 {
-		transactionCompleted, trxHash, err := CheckAndRaiseTokenTransaction(DB, claimID)
+		transactionEnqueued, trxHash, err := CheckAndRaiseTokenTransaction(DB, claimID, task)
 		if err != nil {
 			fmt.Println(err.Error())
 			utils.BuildResultAndEnqueue(err.Error(), http.StatusInternalServerError, task.ID, task)
 			return
 		}
+		if trxHash != "" {
+			//transaction is completed, return transaction hash value
+			res.User = user
+			res.LastInsertID = updatedApprovalRecord
+			res.TransactionCompleted = true
+			res.TransactionHash = trxHash
+			resJsonStr, err := json.Marshal(res)
+			if err != nil {
+				utils.BuildResultAndEnqueue(err.Error(), http.StatusInternalServerError, task.ID, task)
+				return
+			}
+			fmt.Println(string(resJsonStr))
+			utils.BuildResultAndEnqueue(string(resJsonStr), http.StatusOK, task.ID, task)
+			return
+		}
+		if transactionEnqueued {
+			log.Println("transaction enqueued for transaction: %d", task.ID)
+			return
+		}
+		//aprroval not enough
 		res.User = user
 		res.LastInsertID = updatedApprovalRecord
-		res.TransactionCompleted = transactionCompleted
-		res.TransactionHash = trxHash
+		res.TransactionCompleted = false
 		resJsonStr, err := json.Marshal(res)
 		if err != nil {
 			utils.BuildResultAndEnqueue(err.Error(), http.StatusInternalServerError, task.ID, task)
 			return
 		}
-		fmt.Println(string(resJsonStr))
+		log.Println(string(resJsonStr))
 		utils.BuildResultAndEnqueue(string(resJsonStr), http.StatusOK, task.ID, task)
 		return
 	}
@@ -234,29 +253,48 @@ func CreateClaimApproval(DB *sql.DB, task domain.Task, user string, operation st
 		return
 	}
 	log.Println("Create a token claim record, last insert ID: ", lastInsertID)
-	transactionCompleted, trxHash, err := CheckAndRaiseTokenTransaction(DB, claimID)
+	transactionEnqueued, trxHash, err := CheckAndRaiseTokenTransaction(DB, claimID, task)
 	if err != nil {
-		fmt.Println(err.Error())
+		log.Println(err.Error())
 		utils.BuildResultAndEnqueue(err.Error(), http.StatusInternalServerError, task.ID, task)
 		return
 	}
+	if trxHash != "" {
+		//transaction completed
+		res.User = user
+		res.LastInsertID = lastInsertID
+		res.TransactionCompleted = true
+		res.TransactionHash = trxHash
+		resJsonStr, err := json.Marshal(res)
+		if err != nil {
+			utils.BuildResultAndEnqueue(err.Error(), http.StatusInternalServerError, task.ID, task)
+			return
+		}
+		log.Println(string(resJsonStr))
+		utils.BuildResultAndEnqueue(string(resJsonStr), http.StatusOK, task.ID, task)
+		return
+	}
+	if transactionEnqueued {
+		log.Println("transaction enqueued for transaction: %d", task.ID)
+		return
+	}
+	//aprroval not enough
 	res.User = user
-	res.LastInsertID = lastInsertID
-	res.TransactionCompleted = transactionCompleted
-	res.TransactionHash = trxHash
+	res.LastInsertID = updatedApprovalRecord
+	res.TransactionCompleted = false
 	resJsonStr, err := json.Marshal(res)
 	if err != nil {
 		utils.BuildResultAndEnqueue(err.Error(), http.StatusInternalServerError, task.ID, task)
 		return
 	}
-	fmt.Println(string(resJsonStr))
+	log.Println(string(resJsonStr))
 	utils.BuildResultAndEnqueue(string(resJsonStr), http.StatusOK, task.ID, task)
 }
 
-func GetClaimApproval(DB *sql.DB, task domain.Task, approver string, claimID int, approvalID int, status int) {
+func GetClaimApproval(DB *sql.DB, task domain.Task, approver string, claimID int64, approvalID int64, status int) {
 	var approver_pt *string
-	var id_pt *int
-	var claim_id_pt *int
+	var id_pt *int64
+	var claim_id_pt *int64
 	var status_pt *int
 
 	if approver != "" {
@@ -283,7 +321,7 @@ func GetClaimApproval(DB *sql.DB, task domain.Task, approver string, claimID int
 	utils.BuildResultAndEnqueue(string(approvalsJsonStr), http.StatusOK, task.ID, task)
 }
 
-func isApprovalsAdequate(DB *sql.DB, claimID int) (bool, error) {
+func isApprovalsAdequate(DB *sql.DB, claimID int64) (bool, error) {
 	//check if there are two records in table WithdrawApprovals, approve_status = 1 and claim_id = claimID
 	approve_status := 1
 	claims, err := mysql_connector.GetApprovals(DB, nil, nil, &claimID, &approve_status)
@@ -312,7 +350,7 @@ func execWithdrawTransaction(contractAddr string, amount string, privateKey stri
 	return trxhash, nil
 }
 
-func CheckAndRaiseTokenTransaction(DB *sql.DB, claimID int) (bool, string, error) {
+func CheckAndRaiseTokenTransaction(DB *sql.DB, claimID int64, task domain.Task) (bool, string, error) {
 	readyRaiseTrans, err := isApprovalsAdequate(DB, claimID)
 	if err != nil {
 		return false, "", err
@@ -332,38 +370,31 @@ func CheckAndRaiseTokenTransaction(DB *sql.DB, claimID int) (bool, string, error
 	}
 	if claims[0].ClaimStatus != 0 {
 		//transaction completed and cliam been closed
-		return true, "", nil
+		return false, claims[0].TransactionHash, nil
 	}
 	contractAddr := claims[0].ContractAddress
 	amount := claims[0].Amount
 	claimType := claims[0].ClaimType
 	privateKey := claims[0].PrivateKey
-	var trxhash string
 
-	//raise a transaction based on claim
-	if claimType == 0 {
-		trxhash, err = execDepositTransaction(contractAddr, amount, privateKey)
-		if err != nil {
-			err := fmt.Errorf("Transaction failed for claim id: %d, manual interference required", claimID)
-			return false, "", err
-		}
-		err := mysql_connector.UpdateTokenClaimsStatus(DB, 1, claimID, trxhash)
-		if err != nil {
-			err := fmt.Errorf("Transaction completed but failed to update database for claim id: %d, manual interference required", claimID)
-			return false, "", err
-		}
-	} else if claimType == 1 {
-		trxhash, err = execWithdrawTransaction(contractAddr, amount, privateKey)
-		if err != nil {
-			err := fmt.Errorf("Transaction failed for claim id: %d, manual interference required", claimID)
-			return false, "", err
-		}
-		err := mysql_connector.UpdateTokenClaimsStatus(DB, 1, claimID, trxhash)
-		if err != nil {
-			err := fmt.Errorf("Transaction completed but failed to update database for claim id: %d, manual interference required", claimID)
-			return false, "", err
-		}
+	transaction := domain.Transaction{
+		TaskID:       task.ID,
+		Amount:       amount,
+		ContractAddr: contractAddr,
+		ClaimType:    claimType,
+		PrivateKey:   privateKey,
+		ClaimID:      claimID,
+		Task:         task,
 	}
 
-	return true, trxhash, nil
+	select {
+	case utils.TransactionQueue <- transaction:
+		// in queue, when task queue is not full
+		fmt.Println("transaction enqueue:", task.ID)
+	default:
+		// return 503 if task queue is full
+		err := fmt.Errorf("Transaction queue is full for claim id: %d, please try to approve again", claimID)
+		return false, "", err
+	}
+	return true, "", nil
 }
