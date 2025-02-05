@@ -9,7 +9,7 @@ type Task struct {
 	Status    int         `json:"status"` //0 - pending, 1 - working, 2 - completed, 3 - retrying, 4 - failed
 	ReqMethod string      `json:"req_method"`
 	TaskType  int8        `json:"task_type"` //0: token claim; 1: approval
-	RespChan  chan string // 用于 worker 回传结果
+	RespChan  chan string // for http response
 }
 
 //status: 0 - pending, 1 - working, 2 - completed, 3 - retrying, 4 - failed

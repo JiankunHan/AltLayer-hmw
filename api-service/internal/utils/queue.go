@@ -10,5 +10,5 @@ var TaskQueue chan domain.Task
 
 var TransactionQueue chan domain.Transaction
 
-// 管理 response 通道的映射表
+// Map that stores response channel
 var ResponseMap sync.Map

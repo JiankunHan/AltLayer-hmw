@@ -7,7 +7,7 @@ import (
 var taskIDCounter int64
 var mu sync.Mutex
 
-// 获取唯一的递增 task ID（时间戳 + 递增计数器）
+// generate unique taskID
 func GenerateTaskID() int64 {
 	mu.Lock()
 	defer mu.Unlock()

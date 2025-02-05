@@ -11,7 +11,7 @@ func HttpResponse(w http.ResponseWriter, res string, code int) {
 }
 
 func BuildResultAndEnqueue(res string, code int, taskId int64, task domain.Task) {
-	// 获取对应的 response 通道
+	// get response channel
 	if ch, ok := ResponseMap.Load(taskId); ok {
 		responseChan := ch.(chan string)
 		responseChan <- res

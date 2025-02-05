@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	domain "hw-app/internal/domain"
+	ganache_connector "hw-app/internal/middleware"
 	mysql_connector "hw-app/internal/repository"
 	utils "hw-app/internal/utils"
 	"log"
@@ -15,11 +16,9 @@ import (
 
 // This thread interacts with Ganache
 func GanacheHandler(DB *sql.DB, maxRetryTimes int, wg *sync.WaitGroup) {
-	defer wg.Done() // 完成任务后减少 WaitGroup 的计数
+	defer wg.Done() // WaitGroup minus 1 after finish processing in this thread
 	for transaction := range utils.TransactionQueue {
-		// 模拟处理结果（这里可以是将结果保存到数据库、发送给客户端等）
-		// 这里简单地打印结果
-		log.Printf("Result processed for task %d: %s\n", transaction.TaskID, transaction.Status)
+		log.Printf("Transaction processed for task %d: %s\n", transaction.TaskID, transaction.Status)
 		processTransaction(DB, transaction, maxRetryTimes)
 	}
 }
@@ -94,4 +93,20 @@ func processTransaction(DB *sql.DB, transaction domain.Transaction, maxRetryTime
 		fmt.Println(string(resJsonStr))
 		utils.BuildResultAndEnqueue(string(resJsonStr), http.StatusOK, transaction.Task.ID, transaction.Task)
 	}
+}
+
+func execDepositTransaction(contractAddr string, amount string, privateKey string) (string, error) {
+	trxhash, err := ganache_connector.DepositTransaction(contractAddr, amount, privateKey)
+	if err != nil {
+		return "", err
+	}
+	return trxhash, nil
+}
+
+func execWithdrawTransaction(contractAddr string, amount string, privateKey string) (string, error) {
+	trxhash, err := ganache_connector.WithDrawTransaction(contractAddr, amount, privateKey)
+	if err != nil {
+		return "", err
+	}
+	return trxhash, nil
 }

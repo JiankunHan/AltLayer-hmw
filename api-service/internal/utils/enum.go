@@ -5,7 +5,7 @@ type TaskType int
 
 // four task types
 const (
-	claimWithdraw TaskType = iota + 1 // 从 1 开始
+	claimWithdraw TaskType = iota + 1 // start from 1
 	claimDeposit
 	approval
 	unapproval

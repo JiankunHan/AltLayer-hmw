@@ -19,7 +19,7 @@ var PoolDB []*sql.DB
 
 // RequestHandler, deal with tasks in the queue
 func RequestHandler(id int, wg *sync.WaitGroup) {
-	defer wg.Done() // 完成任务后减少 WaitGroup 的计数
+	defer wg.Done() // WaitGroup minus 1 after finish processing in this thread
 
 	for task := range utils.TaskQueue {
 		fmt.Printf("req_handler %d is processing task %d\n", id, task.ID)
@@ -332,22 +332,6 @@ func isApprovalsAdequate(DB *sql.DB, claimID int64) (bool, error) {
 		return true, nil
 	}
 	return false, nil
-}
-
-func execDepositTransaction(contractAddr string, amount string, privateKey string) (string, error) {
-	trxhash, err := ganache_connector.DepositTransaction(contractAddr, amount, privateKey)
-	if err != nil {
-		return "", err
-	}
-	return trxhash, nil
-}
-
-func execWithdrawTransaction(contractAddr string, amount string, privateKey string) (string, error) {
-	trxhash, err := ganache_connector.WithDrawTransaction(contractAddr, amount, privateKey)
-	if err != nil {
-		return "", err
-	}
-	return trxhash, nil
 }
 
 func CheckAndRaiseTokenTransaction(DB *sql.DB, claimID int64, task domain.Task) (bool, string, error) {

@@ -28,7 +28,6 @@ func IntializeDBConn() (*sql.DB, error) {
 
 // 初始化 MySQL 连接
 func InitDB() (*sql.DB, error) {
-	// 修改成你自己数据库的连接信息
 	dsn := "root:Jiankun9598+@tcp(mysql:3306)/homework_db?charset=utf8mb4&parseTime=True&loc=Local"
 	DB, err := sql.Open("mysql", dsn)
 	if err != nil {
@@ -65,7 +64,6 @@ func CreateClaimReq(DB *sql.DB, user string, claimType uint8, transactionAmount 
 		return 0, err
 	}
 
-	// 获取插入数据的自增ID
 	lastInsertID, err := result.LastInsertId()
 	if err != nil {
 		return 0, err
@@ -87,7 +85,6 @@ func CreateClaimApproval(DB *sql.DB, user string, claimId int64, status int) (in
 		return 0, err
 	}
 
-	// 获取插入数据的自增ID
 	lastInsertID, err := result.LastInsertId()
 	if err != nil {
 		return 0, err
